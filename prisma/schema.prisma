@@ -1,0 +1,137 @@
+// Scan4Legal Database Schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// Users seeking legal help
+model Client {
+  id                String   @id @default(cuid())
+  name              String?
+  phone             String?  @unique
+  email             String?  @unique
+  language          String   @default("en")
+  locationLat       Float?
+  locationLng       Float?
+  locationAddress   String?
+  isEmergency       Boolean  @default(false)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  
+  // Relations
+  cases             Case[]
+  callSessions      CallSession[]
+  
+  @@map("clients")
+}
+
+// Lawyers providing legal help
+model Lawyer {
+  id                String   @id @default(cuid())
+  name              String
+  email             String   @unique
+  phone             String   @unique
+  password          String
+  languages         String   // JSON array of languages
+  specializations   String   // JSON array of specializations
+  experience        Int      // years of experience
+  rating            Float    @default(0)
+  totalCases        Int      @default(0)
+  isOnline          Boolean  @default(false)
+  isAvailable       Boolean  @default(true)
+  currentCallId     String?
+  subscriptionType  String   @default("free") // free, basic, premium
+  subscriptionEnds DateTime?
+  earnings          Float    @default(0)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  
+  // Relations
+  cases             Case[]
+  callSessions      CallSession[]
+  
+  @@map("lawyers")
+}
+
+// Legal cases
+model Case {
+  id                String   @id @default(cuid())
+  clientId          String
+  lawyerId          String?
+  category          String   // police, domestic, property, loan, labour, accident
+  description       String?
+  urgency           String   @default("normal") // normal, urgent, emergency
+  status            String   @default("pending") // pending, active, resolved, closed
+  summary           String?  // AI-generated summary
+  advice            String?  // Lawyer's advice
+  locationLat       Float?
+  locationLng       Float?
+  locationAddress   String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  
+  // Relations
+  client            Client   @relation(fields: [clientId], references: [id])
+  lawyer            Lawyer?  @relation(fields: [lawyerId], references: [id])
+  callSessions      CallSession[]
+  
+  @@map("cases")
+}
+
+// Call sessions
+model CallSession {
+  id                String   @id @default(cuid())
+  caseId            String
+  clientId          String
+  lawyerId          String?
+  type              String   // video, audio, chat
+  status            String   @default("initiated") // initiated, connected, ended, failed
+  startTime         DateTime @default(now())
+  endTime           DateTime?
+  duration          Int?     // seconds
+  recordingUrl      String?  // URL to call recording
+  transcript        String?  // Call transcript
+  cost              Float    @default(0)
+  paymentStatus     String   @default("pending") // pending, paid, refunded
+  quality           String?  // good, poor, excellent
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  
+  // Relations
+  case              Case     @relation(fields: [caseId], references: [id])
+  client            Client   @relation(fields: [clientId], references: [id])
+  lawyer            Lawyer?  @relation(fields: [lawyerId], references: [id])
+  
+  @@map("call_sessions")
+}
+
+// Reports sent to users
+model Report {
+  id                String   @id @default(cuid())
+  caseId            String
+  clientId          String
+  type              String   // whatsapp, sms, email
+  recipient         String
+  content           String
+  status            String   @default("sent") // sent, delivered, failed
+  sentAt            DateTime @default(now())
+  
+  @@map("reports")
+}
+
+// System logs
+model SystemLog {
+  id                String   @id @default(cuid())
+  type              String   // connection, payment, error, etc.
+  message           String
+  metadata          String?  // JSON metadata
+  level             String   @default("info") // info, warning, error
+  createdAt         DateTime @default(now())
+  
+  @@map("system_logs")
+}
